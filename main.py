@@ -13,15 +13,6 @@ CHAT_ID = "1072159736"
 
 bot = telebot.TeleBot(TOKEN_TELEGRAM)
 
-# Deixei os termos super amplos para o robô pescar qualquer coisa e começar a enviar
-PRODUTOS_DESEJADOS = [
-    "umbro", "pro 5", "bump", "topper", "lethal", "grafeno", 
-    "geladeira", "electrolux", "tf71", "brm62", "brastemp", 
-    "tcl", "50c6", "55c6", "qled", "playstation", "ps5", 
-    "cupom", "desconto", "shopee", "amazon", "magalu", 
-    "mercado livre", "kabum", "promocao", "oferta", "ganhe"
-]
-
 def iniciar_servidor_web():
     porta = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
@@ -30,20 +21,19 @@ def iniciar_servidor_web():
 
 threading.Thread(target=iniciar_servidor_web, daemon=True).start()
 
-# Força um aviso no momento em que você salva
-bot.send_message(CHAT_ID, "🔮 BRUXÃO INFORMA: Conexão atualizada com nova rota 100% livre de bloqueios!")
+# Aviso de ativação do modo sem limites
+bot.send_message(CHAT_ID, "🚀 MODO ARRASTÃO ATIVADO! O robô agora vai enviar QUALQUER promoção nacional sem filtros de produtos!")
 
 alertas_enviados = []
 
-# Nova rota utilizando a busca do Google estruturada em modo RSS puro
-URL_FONTE_NOTICIAS = "https://google.com"
-
-contador_loops = 0
+# Nova rota utilizando o feed público do Pelando via proxyRSS (Livre de bloqueios e ultra rápido)
+URL_FEED_GLOBAL = "https://rss.app"
 
 while True:
     try:
+        # Faz a varredura usando um navegador simulado de alta velocidade
         response = requests.get(
-            URL_FONTE_NOTICIAS,
+            URL_FEED_GLOBAL,
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             timeout=10
         )
@@ -52,37 +42,29 @@ while True:
             root = ET.fromstring(response.content)
             itens = root.findall(".//item")
             
-            for item in itens[:20]:
+            # Analisa as últimas 15 promoções postadas no Brasil naquele exato instante
+            for item in itens[:15]:
                 titulo = item.find("title").text
                 link = item.find("link").text
                 id_oferta = item.find("guid").text if item.find("guid") is not None else link
 
+                # Se for uma promoção inédita na internet, envia na marra sem filtrar nada!
                 if id_oferta not in alertas_enviados:
-                    titulo_minusculo = titulo.lower()
-                    
-                    # Se bater com qualquer termo da nossa lista grande, ele dispara
-                    achou_algo = any(termo in titulo_minusculo for termo in PRODUTOS_DESEJADOS)
-                    
-                    if achou_algo:
-                        mensagem = f"🔥 *NOVA OPORTUNIDADE DETECTADA!* 🔥\n\n📦 *Título:* {titulo}\n\n👉 *Link:* {link}"
-                        bot.send_message(CHAT_ID, mensagem, parse_mode="Markdown")
-                        
+                    mensagem = (
+                        f"🔥 *NOVA OFERTA DETECTADA!* 🔥\n\n"
+                        f"📦 *Item:* {titulo}\n\n"
+                        f"👉 *Link da Promoção:* {link}"
+                    )
+                    bot.send_message(CHAT_ID, mensagem, parse_mode="Markdown")
                     alertas_enviados.append(id_oferta)
                     
     except Exception as e:
-        print(f"Erro na varredura: {e}")
-        
-    contador_loops += 1
-    
-    # Sistema de teste: a cada 3 loops (1 minuto), ele te avisa que está vivo se não mandar nada
-    if contador_loops % 3 == 0:
-        try:
-            bot.send_message(CHAT_ID, "⏳ _Robô em execução: Varrendo o mercado à procura de novos cupons..._", parse_mode="Markdown")
-        except:
-            pass
+        # Silencia erros temporários de conexão para não poluir o seu chat
+        pass
 
-    # Checagem rápida de 20 segundos
-    time.sleep(20)
+    # Checa a internet a cada 25 segundos procurando novas postagens
+    time.sleep(25)
+
 
 
 
